@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 Screenshot Mobile Number Extractor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfeff',
+                            100: '#cffaff',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                        },
+                        darkbg: '#0B0F17',
+                        darkcard: 'rgba(17, 24, 39, 0.75)',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Tesseract.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        * {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Glassmorphism Styles */
+        
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        /* Custom Scrollbar */
+        
+         ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+         ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+         ::-webkit-scrollbar-thumb {
+            background: rgba(6, 182, 212, 0.3);
+            border-radius: 4px;
+        }
+        
+         ::-webkit-scrollbar-thumb:hover {
+            background: rgba(6, 182, 212, 0.6);
+        }
+        /* Pulse glow animation */
+        
+        @keyframes cyanGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(6, 182, 212, 0.45);
+            }
+        }
+        
+        .cyan-glow {
+            animation: cyanGlow 3s infinite;
+        }
+        /* Drag and Drop hover ring */
+        
+        .drag-over {
+            border-color: #06b6d4 !important;
+            background: rgba(6, 182, 212, 0.08) !important;
+            transform: scale(1.01);
+        }
+    </style>
+</head>
+
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col transition-colors duration-300 light:bg-slate-50 light:text-slate-800">
+
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3.5">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg lg:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                        Mobile Number Extractor
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Extract Indian mobile numbers from screenshots instantly using local OCR</p>
+                </div>
+            </div>
+
+            <!-- Top Right Action Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button id="themeToggleBtn" title="Toggle Theme" class="p-2.5 rounded-xl glass-panel text-slate-300 hover:text-cyan-400 transition-all hover:bg-slate-800/50">
+                    <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-lg hidden dark:block"></i>
+                </button>
+
+                <!-- Settings Button -->
+                <button id="openSettingsBtn" title="OCR Settings" class="p-2.5 rounded-xl glass-panel text-slate-300 hover:text-cyan-400 transition-all hover:bg-slate-800/50 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-lg"></i>
+                    <span class="text-xs font-semibold hidden md:inline">OCR Settings</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-l-4 border-l-cyan-500">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 rounded-lg text-cyan-400 text-lg">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-slate-200">100% Local Browser Processing</p>
+                    <p class="text-xs text-slate-400">🔒 Your screenshots are never uploaded to any server. Everything is processed locally in your browser.</p>
+                </div>
+            </div>
+            <span class="text-xs font-mono bg-cyan-500/10 text-cyan-300 px-3 py-1 rounded-full border border-cyan-500/20 whitespace-nowrap">
+                Offline Capable
+            </span>
+        </div>
+
+        <section class="glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> 1. Upload Screenshots
+                </h2>
+                <span id="fileCountBadge" class="text-xs text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">0 images selected</span>
+            </div>
+
+            <!-- Dropzone -->
+            <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-cyan-500/50 rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 bg-slate-900/30 hover:bg-slate-800/20 group">
+                <input type="file" id="fileInput" multiple accept="image/png, image/jpeg, image/jpg, image/webp" class="hidden">
+                <div class="flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-800 group-hover:bg-cyan-500/10 flex items-center justify-center text-slate-400 group-hover:text-cyan-400 transition-all text-2xl group-hover:scale-110">
+                        <i class="fa-solid fa-images"></i>
+                    </div>
+                    <div>
+                        <p class="text-base font-semibold text-slate-200">Drop contact screenshots here</p>
+                        <p class="text-xs text-slate-400 mt-1">or <span class="text-cyan-400 hover:underline">browse files</span> from your device</p>
+                    </div>
+                    <div class="flex gap-2 text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                        <span>PNG</span> • <span>JPG</span> • <span>JPEG</span> • <span>WEBP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uploaded Files Thumbnail Grid -->
+            <div id="fileListContainer" class="hidden space-y-2">
+                <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+                    <span>Uploaded Queue</span>
+                    <button id="clearQueueBtn" class="text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i> Clear Queue
+                    </button>
+                </div>
+                <div id="fileGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-60 overflow-y-auto p-1">
+                    <!-- Dynamic File Cards will be injected here -->
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-cyan-400"></i> 2. OCR Processing & Detection
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Scans contact names, formats, gaps, and normalizes to +91 Indian format</p>
+                </div>
+                <button id="startOcrBtn" disabled class="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group">
+                    <i class="fa-solid fa-magnifying-glass-chart group-hover:scale-110 transition-transform"></i>
+                    <span>Extract Mobile Numbers</span>
+                </button>
+            </div>
+
+            <!-- OCR Progress Bar Box -->
+            <div id="progressContainer" class="hidden space-y-3 pt-2">
+                <div class="flex justify-between text-xs text-slate-300 font-medium">
+                    <span id="progressStatusText" class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-notch fa-spin text-cyan-400"></i>
+                        Initializing OCR Engine...
+                    </span>
+                    <span id="progressPercentText" class="font-mono text-cyan-400 font-bold">0%</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-200 w-0"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="statsSection" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Extracted -->
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-cyan-500 relative overflow-hidden group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Total Found</p>
+                        <h3 id="statTotal" class="text-2xl lg:text-3xl font-extrabold text-slate-100 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 rounded-xl text-cyan-400 text-xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-mobile-retro"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unique Numbers -->
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-emerald-500 relative overflow-hidden group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Unique Numbers</p>
+                        <h3 id="statUnique" class="text-2xl lg:text-3xl font-extrabold text-emerald-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 text-xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duplicates -->
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-amber-500 relative overflow-hidden group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Duplicates</p>
+                        <h3 id="statDuplicates" class="text-2xl lg:text-3xl font-extrabold text-amber-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 rounded-xl text-amber-400 text-xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-copy"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screenshots Processed -->
+            <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-purple-500 relative overflow-hidden group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Screenshots</p>
+                        <h3 id="statScreenshots" class="text-2xl lg:text-3xl font-extrabold text-purple-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-purple-500/10 rounded-xl text-purple-400 text-xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-image"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="resultsSection" class="glass-panel rounded-2xl p-6 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-cyan-400"></i> Extracted Numbers
+                    </h2>
+                    <span id="tableBadgeCount" class="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-0.5 rounded-full font-semibold">
+                        0 items
+                    </span>
+                </div>
+
+                <!-- Export & Copy Toolbar -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="copyAllBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-regular fa-copy text-cyan-400"></i> Copy All
+                    </button>
+                    <button id="exportCsvBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-file-csv text-blue-400"></i> Export CSV
+                    </button>
+                    <button id="exportExcelBtn" class="px-3.5 py-2 bg-emerald-900/40 hover:bg-emerald-800/50 text-emerald-300 text-xs font-semibold rounded-xl border border-emerald-700/50 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel text-emerald-400"></i> Export Excel
+                    </button>
+                    <button id="clearResultsBtn" class="px-3.5 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-300 text-xs font-semibold rounded-xl border border-red-800/40 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-trash"></i> Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Filter & Search Controls Bar -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <!-- Search Box -->
+                <div class="relative w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="searchInput" placeholder="Search number or file..." class="w-full bg-slate-900/80 border border-slate-700 focus:border-cyan-500 rounded-xl pl-9 pr-3 py-2 text-slate-200 outline-none transition-colors">
+                </div>
+
+                <!-- Filter & Sorting Group -->
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <select id="filterSelect" class="bg-slate-900/80 border border-slate-700 text-slate-300 rounded-xl px-3 py-2 outline-none focus:border-cyan-500">
+                        <option value="all">All Numbers</option>
+                        <option value="unique">Unique Only</option>
+                        <option value="duplicates">Duplicates Only</option>
+                    </select>
+
+                    <button id="toggleDuplicatesBtn" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-xl transition-colors font-medium">
+                        <i class="fa-solid fa-filter"></i> Deduplicate
+                    </button>
+                </div>
+            </div>
+
+            <!-- Batch Action Bar (Visible when rows selected) -->
+            <div id="batchBar" class="hidden p-3 bg-cyan-950/40 border border-cyan-800/50 rounded-xl flex items-center justify-between text-xs">
+                <span id="selectedCountText" class="text-cyan-300 font-semibold">0 items selected</span>
+                <div class="flex gap-2">
+                    <button id="copySelectedBtn" class="px-3 py-1.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 transition-colors">Copy Selected</button>
+                    <button id="deleteSelectedBtn" class="px-3 py-1.5 bg-red-600/80 text-white rounded-lg hover:bg-red-500 transition-colors">Delete Selected</button>
+                </div>
+            </div>
+
+            <!-- Results Table Container -->
+            <div class="overflow-x-auto rounded-xl border border-slate-800">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-900/90 text-slate-400 uppercase text-[11px] tracking-wider border-b border-slate-800">
+                        <tr>
+                            <th class="p-3.5 w-8 text-center">
+                                <input type="checkbox" id="selectAllCheckbox" class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer">
+                            </th>
+                            <th class="p-3.5">#</th>
+                            <th class="p-3.5">Mobile Number</th>
+                            <th class="p-3.5">Source Screenshot</th>
+                            <th class="p-3.5 text-center">Occurrences</th>
+                            <th class="p-3.5 text-center">Status</th>
+                            <th class="p-3.5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody" class="divide-y divide-slate-800/60 font-mono">
+                        <tr id="emptyRow">
+                            <td colspan="7" class="p-8 text-center text-slate-500 font-sans">
+                                <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-600 block"></i> No numbers extracted yet. Upload screenshots and click "Extract Mobile Numbers".
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="glass-panel rounded-2xl p-6 space-y-3">
+            <details class="group">
+                <summary class="flex items-center justify-between cursor-pointer list-none text-sm font-semibold text-slate-300 hover:text-cyan-400 transition-colors">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-cyan-400"></i>
+                        View Raw OCR Extracted Text
+                    </span>
+                    <i class="fa-solid fa-chevron-down group-open:rotate-180 transition-transform text-xs text-slate-500"></i>
+                </summary>
+                <div class="mt-4 pt-3 border-t border-slate-800/80">
+                    <div id="rawOcrContainer" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        <p class="text-xs text-slate-500 italic">Raw text output will appear here after running OCR processing.</p>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-4 border-t border-slate-800/60 text-center text-xs text-slate-500">
+        <p>📱 Screenshot Mobile Number Extractor &bull; Client-Side OCR Engine</p>
+    </footer>
+
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-4xl w-full max-h-[90vh] rounded-2xl flex flex-col overflow-hidden border border-slate-700">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60">
+                <h3 id="modalTitle" class="text-sm font-semibold text-slate-200 truncate max-w-md">Screenshot Preview</h3>
+                <div class="flex items-center gap-2">
+                    <button id="zoomOutBtn" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs" title="Zoom Out"><i class="fa-solid fa-minus"></i></button>
+                    <button id="resetZoomBtn" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs" title="Reset"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button id="zoomInBtn" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs" title="Zoom In"><i class="fa-solid fa-plus"></i></button>
+                    <button id="closeModalBtn" class="p-2 bg-red-900/40 hover:bg-red-800/60 text-red-200 rounded-lg text-xs ml-2" title="Close"><i class="fa-solid fa-xmark text-sm"></i></button>
+                </div>
+            </div>
+            <!-- Modal Body Image View -->
+            <div class="flex-grow overflow-auto p-4 flex items-center justify-center bg-slate-950/80 min-h-[300px]">
+                <img id="modalImg" src="" alt="Preview" class="max-w-full max-h-[70vh] object-contain transition-transform duration-200">
+            </div>
+        </div>
+    </div>
+
+    <!-- OCR Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 space-y-5 border border-slate-700">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-cyan-400"></i> OCR Image Pre-processing
+                </h3>
+                <button id="closeSettingsBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- Contrast Slider -->
+                <div>
+                    <div class="flex justify-between mb-1 text-slate-300">
+                        <span>Contrast Multiplier:</span>
+                        <span id="contrastVal" class="text-cyan-400 font-bold">1.4</span>
+                    </div>
+                    <input type="range" id="contrastSetting" min="1.0" max="2.5" step="0.1" value="1.4" class="w-full accent-cyan-400">
+                </div>
+
+                <!-- Grayscale Toggle -->
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-300">Convert to Grayscale</span>
+                    <input type="checkbox" id="grayscaleSetting" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                </div>
+
+                <!-- Canvas Upscaling -->
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-300">2x Image Resolution Upscale</span>
+                    <input type="checkbox" id="upscaleSetting" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                </div>
+
+                <!-- Whitelist Filter -->
+                <div>
+                    <label class="block text-slate-300 mb-1">OCR Whitelist Characters:</label>
+                    <input type="text" id="whitelistSetting" value="0123456789+ -:~" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 font-mono">
+                    <p class="text-[10px] text-slate-500 mt-1">Leave default to optimize speed for phone numbers.</p>
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-end gap-2">
+                <button id="saveSettingsBtn" class="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-xl transition-colors">
+                    Save Preferences
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 glass-panel px-4 py-3 rounded-xl border border-cyan-500/40 text-slate-100 text-xs font-semibold flex items-center gap-2 shadow-2xl transition-all duration-300 transform translate-y-20 opacity-0">
+        <i class="fa-solid fa-circle-check text-cyan-400 text-base"></i>
+        <span id="toastMsg">Action completed successfully</span>
+    </div>
+
+    <!-- Hidden preprocessing canvas -->
+    <canvas id="preprocessCanvas" class="hidden"></canvas>
+
+    <script>
+        // State Management
+        const state = {
+            uploadedFiles: [], // [{ id, file, name, size, dataUrl }]
+            extractedResults: [], // [{ id, number, normalized, source, status, selected }]
+            rawOcrTexts: [], // [{ fileName, text }]
+            isProcessing: false,
+            ocrWorker: null,
+            settings: {
+                contrast: 1.4,
+                grayscale: true,
+                upscale: true,
+                whitelist: '0123456789+ -:~'
+            },
+            deduplicateMode: false
+        };
+
+        // DOM Element Cache
+        const elements = {
+            dropZone: document.getElementById('dropZone'),
+            fileInput: document.getElementById('fileInput'),
+            fileListContainer: document.getElementById('fileListContainer'),
+            fileGrid: document.getElementById('fileGrid'),
+            fileCountBadge: document.getElementById('fileCountBadge'),
+            clearQueueBtn: document.getElementById('clearQueueBtn'),
+            startOcrBtn: document.getElementById('startOcrBtn'),
+            progressContainer: document.getElementById('progressContainer'),
+            progressBar: document.getElementById('progressBar'),
+            progressStatusText: document.getElementById('progressStatusText'),
+            progressPercentText: document.getElementById('progressPercentText'),
+            statTotal: document.getElementById('statTotal'),
+            statUnique: document.getElementById('statUnique'),
+            statDuplicates: document.getElementById('statDuplicates'),
+            statScreenshots: document.getElementById('statScreenshots'),
+            resultsTableBody: document.getElementById('resultsTableBody'),
+            tableBadgeCount: document.getElementById('tableBadgeCount'),
+            searchInput: document.getElementById('searchInput'),
+            filterSelect: document.getElementById('filterSelect'),
+            toggleDuplicatesBtn: document.getElementById('toggleDuplicatesBtn'),
+            selectAllCheckbox: document.getElementById('selectAllCheckbox'),
+            batchBar: document.getElementById('batchBar'),
+            selectedCountText: document.getElementById('selectedCountText'),
+            copySelectedBtn: document.getElementById('copySelectedBtn'),
+            deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
+            copyAllBtn: document.getElementById('copyAllBtn'),
+            exportCsvBtn: document.getElementById('exportCsvBtn'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'),
+            clearResultsBtn: document.getElementById('clearResultsBtn'),
+            rawOcrContainer: document.getElementById('rawOcrContainer'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toastMsg'),
+            themeToggleBtn: document.getElementById('themeToggleBtn'),
+            // Settings Modal
+            openSettingsBtn: document.getElementById('openSettingsBtn'),
+            closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+            settingsModal: document.getElementById('settingsModal'),
+            contrastSetting: document.getElementById('contrastSetting'),
+            contrastVal: document.getElementById('contrastVal'),
+            grayscaleSetting: document.getElementById('grayscaleSetting'),
+            upscaleSetting: document.getElementById('upscaleSetting'),
+            whitelistSetting: document.getElementById('whitelistSetting'),
+            saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+            // Image Preview Modal
+            imageModal: document.getElementById('imageModal'),
+            modalImg: document.getElementById('modalImg'),
+            modalTitle: document.getElementById('modalTitle'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            zoomInBtn: document.getElementById('zoomInBtn'),
+            zoomOutBtn: document.getElementById('zoomOutBtn'),
+            resetZoomBtn: document.getElementById('resetZoomBtn')
+        };
+
+        let currentZoom = 1;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            updateStats();
+        });
+
+        // Toast Helper
+        function showToast(message, isError = false) {
+            elements.toastMsg.innerText = message;
+            const icon = elements.toast.querySelector('i');
+            if (isError) {
+                icon.className = 'fa-solid fa-triangle-exclamation text-red-400 text-base';
+                elements.toast.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            } else {
+                icon.className = 'fa-solid fa-circle-check text-cyan-400 text-base';
+                elements.toast.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+            }
+            elements.toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                elements.toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function setupEventListeners() {
+            // Drag and Drop
+            elements.dropZone.addEventListener('click', () => elements.fileInput.click());
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                elements.dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    elements.dropZone.classList.add('drag-over');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                elements.dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    elements.dropZone.classList.remove('drag-over');
+                });
+            });
+
+            elements.dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                handleFilesSelected(files);
+            });
+
+            elements.fileInput.addEventListener('change', (e) => {
+                handleFilesSelected(e.target.files);
+            });
+
+            elements.clearQueueBtn.addEventListener('click', () => {
+                state.uploadedFiles = [];
+                renderUploadedFiles();
+            });
+
+            // OCR Actions
+            elements.startOcrBtn.addEventListener('click', processOCR);
+
+            // Table Actions & Filters
+            elements.searchInput.addEventListener('input', renderResultsTable);
+            elements.filterSelect.addEventListener('change', renderResultsTable);
+            elements.toggleDuplicatesBtn.addEventListener('click', () => {
+                state.deduplicateMode = !state.deduplicateMode;
+                elements.toggleDuplicatesBtn.classList.toggle('bg-amber-500/20', state.deduplicateMode);
+                elements.toggleDuplicatesBtn.classList.toggle('border-amber-500', state.deduplicateMode);
+                renderResultsTable();
+            });
+
+            elements.selectAllCheckbox.addEventListener('change', (e) => {
+                const visible = getFilteredResults();
+                visible.forEach(item => item.selected = e.target.checked);
+                renderResultsTable();
+            });
+
+            elements.copyAllBtn.addEventListener('click', copyAllNumbers);
+            elements.exportCsvBtn.addEventListener('click', exportCSV);
+            elements.exportExcelBtn.addEventListener('click', exportExcel);
+            elements.clearResultsBtn.addEventListener('click', clearAllResults);
+
+            elements.copySelectedBtn.addEventListener('click', copySelectedNumbers);
+            elements.deleteSelectedBtn.addEventListener('click', deleteSelectedNumbers);
+
+            // Theme Toggle
+            elements.themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            // Settings Modal
+            elements.openSettingsBtn.addEventListener('click', () => elements.settingsModal.classList.remove('hidden'));
+            elements.closeSettingsBtn.addEventListener('click', () => elements.settingsModal.classList.add('hidden'));
+            elements.contrastSetting.addEventListener('input', (e) => elements.contrastVal.innerText = e.target.value);
+            elements.saveSettingsBtn.addEventListener('click', () => {
+                state.settings.contrast = parseFloat(elements.contrastSetting.value);
+                state.settings.grayscale = elements.grayscaleSetting.checked;
+                state.settings.upscale = elements.upscaleSetting.checked;
+                state.settings.whitelist = elements.whitelistSetting.value;
+                elements.settingsModal.classList.add('hidden');
+                showToast("OCR preferences saved");
+            });
+
+            // Image Preview Modal Controls
+            elements.closeModalBtn.addEventListener('click', () => elements.imageModal.classList.add('hidden'));
+            elements.zoomInBtn.addEventListener('click', () => updateZoom(0.25));
+            elements.zoomOutBtn.addEventListener('click', () => updateZoom(-0.25));
+            elements.resetZoomBtn.addEventListener('click', () => {
+                currentZoom = 1;
+                elements.modalImg.style.transform = `scale(1)`;
+            });
+        }
+
+        function handleFilesSelected(files) {
+            if (!files || files.length === 0) return;
+
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+            let addedCount = 0;
+
+            Array.from(files).forEach(file => {
+                if (validTypes.includes(file.type)) {
+                    const fileObj = {
+                        id: 'file_' + Math.random().toString(36).substr(2, 9),
+                        file: file,
+                        name: file.name,
+                        size: formatFileSize(file.size),
+                        dataUrl: URL.createObjectURL(file)
+                    };
+                    state.uploadedFiles.push(fileObj);
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                renderUploadedFiles();
+                showToast(`Added ${addedCount} screenshot(s)`);
+            } else {
+                showToast("Please select valid image files (PNG, JPG, WEBP)", true);
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function renderUploadedFiles() {
+            elements.fileGrid.innerHTML = '';
+
+            if (state.uploadedFiles.length === 0) {
+                elements.fileListContainer.classList.add('hidden');
+                elements.startOcrBtn.disabled = true;
+                elements.fileCountBadge.innerText = '0 images selected';
+                return;
+            }
+
+            elements.fileListContainer.classList.remove('hidden');
+            elements.startOcrBtn.disabled = false;
+            elements.fileCountBadge.innerText = `${state.uploadedFiles.length} image(s) queued`;
+
+            state.uploadedFiles.forEach(fileObj => {
+                const card = document.createElement('div');
+                card.className = 'relative group bg-slate-900/90 border border-slate-700/80 rounded-xl overflow-hidden text-left shadow-sm';
+                card.innerHTML = `
+                    <div class="h-20 bg-slate-950 flex items-center justify-center overflow-hidden cursor-pointer">
+                        <img src="${fileObj.dataUrl}" alt="${fileObj.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <div class="p-2">
+                        <p class="text-[11px] font-semibold text-slate-200 truncate" title="${fileObj.name}">${fileObj.name}</p>
+                        <p class="text-[10px] text-slate-400">${fileObj.size}</p>
+                    </div>
+                    <button class="remove-btn absolute top-1 right-1 w-6 h-6 bg-red-600/80 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+
+                // Preview modal trigger
+                card.querySelector('img').addEventListener('click', () => openImagePreview(fileObj));
+
+                // Delete trigger
+                card.querySelector('.remove-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.uploadedFiles = state.uploadedFiles.filter(f => f.id !== fileObj.id);
+                    renderUploadedFiles();
+                });
+
+                elements.fileGrid.appendChild(card);
+            });
+        }
+
+        function openImagePreview(fileObj) {
+            elements.modalTitle.innerText = fileObj.name;
+            elements.modalImg.src = fileObj.dataUrl;
+            currentZoom = 1;
+            elements.modalImg.style.transform = `scale(1)`;
+            elements.imageModal.classList.remove('hidden');
+        }
+
+        function updateZoom(delta) {
+            currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+            elements.modalImg.style.transform = `scale(${currentZoom})`;
+        }
+
+        async function preprocessImage(dataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('preprocessCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const scale = state.settings.upscale ? 2 : 1;
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    const contrast = state.settings.contrast;
+                    const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        let r = data[i];
+                        let g = data[i + 1];
+                        let b = data[i + 2];
+
+                        if (state.settings.grayscale) {
+                            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                            r = g = b = gray;
+                        }
+
+                        // Apply Contrast
+                        r = factor * (r - 128) + 128;
+                        g = factor * (g - 128) + 128;
+                        b = factor * (b - 128) + 128;
+
+                        data[i] = Math.min(255, Math.max(0, r));
+                        data[i + 1] = Math.min(255, Math.max(0, g));
+                        data[i + 2] = Math.min(255, Math.max(0, b));
+                    }
+
+                    ctx.putImageData(imageData, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.src = dataUrl;
+            });
+        }
+
+        async function processOCR() {
+            if (state.uploadedFiles.length === 0 || state.isProcessing) return;
+
+            state.isProcessing = true;
+            elements.startOcrBtn.disabled = true;
+            elements.progressContainer.classList.remove('hidden');
+
+            const totalFiles = state.uploadedFiles.length;
+            let newlyFound = 0;
+
+            try {
+                // Initialize Tesseract Worker
+                elements.progressStatusText.innerHTML = `<i class="fa-solid fa-gear fa-spin text-cyan-400"></i> Loading OCR Language Models...`;
+
+                const worker = await Tesseract.createWorker('eng');
+                if (state.settings.whitelist) {
+                    await worker.setParameters({
+                        tessedit_char_whitelist: state.settings.whitelist,
+                    });
+                }
+
+                for (let index = 0; index < totalFiles; index++) {
+                    const fileObj = state.uploadedFiles[index];
+                    const currentNum = index + 1;
+
+                    elements.progressStatusText.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-cyan-400"></i> Preprocessing & scanning screenshot ${currentNum} of ${totalFiles} (${fileObj.name})...`;
+                    elements.progressPercentText.innerText = `${Math.round(((currentNum - 1) / totalFiles) * 100)}%`;
+                    elements.progressBar.style.width = `${((currentNum - 1) / totalFiles) * 100}%`;
+
+                    // Preprocess via Canvas
+                    const processedDataUrl = await preprocessImage(fileObj.dataUrl);
+
+                    // Perform OCR Recognition
+                    const ret = await worker.recognize(processedDataUrl);
+                    const rawText = ret.data.text || '';
+
+                    // Log raw text
+                    state.rawOcrTexts.push({
+                        fileName: fileObj.name,
+                        text: rawText
+                    });
+
+                    // Extract Mobile Numbers
+                    const extracted = parseIndianMobileNumbers(rawText, fileObj.name);
+                    newlyFound += extracted.length;
+
+                    extracted.forEach(numObj => {
+                        state.extractedResults.push(numObj);
+                    });
+                }
+
+                await worker.terminate();
+
+                elements.progressPercentText.innerText = `100%`;
+                elements.progressBar.style.width = `100%`;
+                elements.progressStatusText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> OCR Scan Completed!`;
+
+                if (newlyFound === 0) {
+                    showToast("No valid Indian mobile numbers found.", true);
+                } else {
+                    showToast(`Successfully extracted ${newlyFound} mobile numbers!`);
+                }
+
+            } catch (err) {
+                console.error("OCR Error:", err);
+                showToast("Unable to read screenshot(s). Please try clearer images.", true);
+            } finally {
+                state.isProcessing = false;
+                elements.startOcrBtn.disabled = false;
+                setTimeout(() => {
+                    elements.progressContainer.classList.add('hidden');
+                }, 2000);
+
+                updateStats();
+                renderResultsTable();
+                renderRawTexts();
+            }
+        }
+
+        function parseIndianMobileNumbers(text, sourceFilename) {
+            const results = [];
+
+            // Clean OCR line breaks and extra garbage characters
+            const lines = text.split('\n');
+
+            lines.forEach(line => {
+                // Regex matches Indian numbers in formats: +91 92847 43319, +91-92847-43319, 919284743319, 9284743319, etc.
+                // Mobile numbers in India start with 6, 7, 8, or 9 and are 10 digits long.
+                const matches = line.match(/(?:\+?91[\s\-]?)?([6-9]\d{4}[\s\-]?\d{5})/g);
+
+                if (matches) {
+                    matches.forEach(rawMatch => {
+                        // Strip non-digits
+                        const digitsOnly = rawMatch.replace(/\D/g, '');
+                        let validTenDigit = null;
+
+                        if (digitsOnly.length === 10 && ['6', '7', '8', '9'].includes(digitsOnly[0])) {
+                            validTenDigit = digitsOnly;
+                        } else if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
+                            const core = digitsOnly.slice(2);
+                            if (['6', '7', '8', '9'].includes(core[0])) {
+                                validTenDigit = core;
+                            }
+                        }
+
+                        if (validTenDigit) {
+                            const normalized = `+91${validTenDigit}`;
+                            results.push({
+                                id: 'num_' + Math.random().toString(36).substr(2, 9),
+                                number: validTenDigit,
+                                normalized: normalized,
+                                source: sourceFilename,
+                                selected: false
+                            });
+                        }
+                    });
+                }
+            });
+
+            return results;
+        }
+
+        function updateStats() {
+            const total = state.extractedResults.length;
+            const uniqueSet = new Set(state.extractedResults.map(r => r.normalized));
+            const uniqueCount = uniqueSet.size;
+            const duplicateCount = total - uniqueCount;
+            const screenshotsCount = new Set(state.extractedResults.map(r => r.source)).size;
+
+            elements.statTotal.innerText = total;
+            elements.statUnique.innerText = uniqueCount;
+            elements.statDuplicates.innerText = duplicateCount;
+            elements.statScreenshots.innerText = screenshotsCount;
+        }
+
+        function getFilteredResults() {
+            let items = [...state.extractedResults];
+
+            // Map occurrences
+            const counts = {};
+            items.forEach(i => counts[i.normalized] = (counts[i.normalized] || 0) + 1);
+            items.forEach(i => i.occurrences = counts[i.normalized]);
+
+            // Filter mode
+            const filter = elements.filterSelect.value;
+            if (filter === 'unique') {
+                items = items.filter(i => i.occurrences === 1);
+            } else if (filter === 'duplicates') {
+                items = items.filter(i => i.occurrences > 1);
+            }
+
+            // Deduplicate toggle
+            if (state.deduplicateMode) {
+                const seen = new Set();
+                const deduplicated = [];
+                items.forEach(item => {
+                    if (!seen.has(item.normalized)) {
+                        seen.add(item.normalized);
+                        deduplicated.push(item);
+                    }
+                });
+                items = deduplicated;
+            }
+
+            // Search filter
+            const query = elements.searchInput.value.trim().toLowerCase();
+            if (query) {
+                items = items.filter(i =>
+                    i.normalized.toLowerCase().includes(query) ||
+                    i.source.toLowerCase().includes(query)
+                );
+            }
+
+            return items;
+        }
+
+        function renderResultsTable() {
+            const items = getFilteredResults();
+            elements.resultsTableBody.innerHTML = '';
+            elements.tableBadgeCount.innerText = `${items.length} items`;
+
+            // Batch bar update
+            const selectedItems = items.filter(i => i.selected);
+            if (selectedItems.length > 0) {
+                elements.batchBar.classList.remove('hidden');
+                elements.selectedCountText.innerText = `${selectedItems.length} item(s) selected`;
+            } else {
+                elements.batchBar.classList.add('hidden');
+            }
+
+            if (items.length === 0) {
+                elements.resultsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-slate-500 font-sans">
+                            <i class="fa-solid fa-magnifying-glass text-2xl mb-2 text-slate-600 block"></i>
+                            No matching mobile numbers found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            items.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition-colors border-b border-slate-800/50';
+
+                const isDup = item.occurrences > 1;
+                const statusBadge = isDup ?
+                    `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-semibold">Duplicate (${item.occurrences})</span>` :
+                    `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-semibold">Valid</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3.5 text-center">
+                        <input type="checkbox" ${item.selected ? 'checked' : ''} class="row-checkbox rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer">
+                    </td>
+                    <td class="p-3.5 text-slate-500 font-mono">${idx + 1}</td>
+                    <td class="p-3.5 font-bold text-cyan-300 font-mono text-sm tracking-wide">${item.normalized}</td>
+                    <td class="p-3.5 text-slate-400 font-sans truncate max-w-xs" title="${item.source}">${item.source}</td>
+                    <td class="p-3.5 text-center font-mono text-slate-300">${item.occurrences}</td>
+                    <td class="p-3.5 text-center font-sans">${statusBadge}</td>
+                    <td class="p-3.5 text-right font-sans space-x-1">
+                        <button class="copy-row-btn p-1.5 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 rounded-lg transition-colors" title="Copy Number">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                        <button class="delete-row-btn p-1.5 hover:bg-slate-700 text-slate-300 hover:text-red-400 rounded-lg transition-colors" title="Delete Entry">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+
+                // Row check listener
+                tr.querySelector('.row-checkbox').addEventListener('change', (e) => {
+                    item.selected = e.target.checked;
+                    renderResultsTable();
+                });
+
+                // Copy single number
+                tr.querySelector('.copy-row-btn').addEventListener('click', () => {
+                    copyToClipboard(item.normalized);
+                    showToast(`Copied ${item.normalized}`);
+                });
+
+                // Delete single number
+                tr.querySelector('.delete-row-btn').addEventListener('click', () => {
+                    state.extractedResults = state.extractedResults.filter(r => r.id !== item.id);
+                    updateStats();
+                    renderResultsTable();
+                    showToast("Entry removed");
+                });
+
+                elements.resultsTableBody.appendChild(tr);
+            });
+        }
+
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+
+        function copyAllNumbers() {
+            const items = getFilteredResults();
+            if (items.length === 0) {
+                showToast("No numbers to copy", true);
+                return;
+            }
+            const textList = items.map(i => i.normalized).join('\n');
+            copyToClipboard(textList);
+            showToast(`✓ ${items.length} numbers copied successfully!`);
+        }
+
+        function copySelectedNumbers() {
+            const selected = state.extractedResults.filter(r => r.selected);
+            if (selected.length === 0) return;
+            const textList = selected.map(i => i.normalized).join('\n');
+            copyToClipboard(textList);
+            showToast(`Copied ${selected.length} selected numbers`);
+        }
+
+        function deleteSelectedNumbers() {
+            const selectedIds = new Set(state.extractedResults.filter(r => r.selected).map(r => r.id));
+            state.extractedResults = state.extractedResults.filter(r => !selectedIds.has(r.id));
+            updateStats();
+            renderResultsTable();
+            showToast("Selected items deleted");
+        }
+
+        function clearAllResults() {
+            if (state.extractedResults.length === 0) return;
+            state.extractedResults = [];
+            state.rawOcrTexts = [];
+            updateStats();
+            renderResultsTable();
+            renderRawTexts();
+            showToast("All results cleared");
+        }
+
+        function exportCSV() {
+            const items = getFilteredResults();
+            if (items.length === 0) {
+                showToast("No data to export", true);
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Sr No,Mobile Number,Source Image\n";
+            items.forEach((item, idx) => {
+                csvContent += `${idx + 1},"${item.normalized}","${item.source}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "mobile_numbers.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Exported mobile_numbers.csv");
+        }
+
+        function exportExcel() {
+            const items = getFilteredResults();
+            if (items.length === 0) {
+                showToast("No data to export", true);
+                return;
+            }
+
+            const excelData = items.map((item, idx) => ({
+                "Sr No": idx + 1,
+                "Mobile Number": item.normalized,
+                "Source Image": item.source,
+                "Status": item.occurrences > 1 ? `Duplicate (${item.occurrences})` : "Valid"
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Mobile Numbers");
+
+            XLSX.writeFile(workbook, "mobile_numbers.xlsx");
+            showToast("Exported mobile_numbers.xlsx");
+        }
+
+        function renderRawTexts() {
+            elements.rawOcrContainer.innerHTML = '';
+
+            if (state.rawOcrTexts.length === 0) {
+                elements.rawOcrContainer.innerHTML = `<p class="text-xs text-slate-500 italic">Raw text output will appear here after running OCR processing.</p>`;
+                return;
+            }
+
+            state.rawOcrTexts.forEach(ocr => {
+                const box = document.createElement('div');
+                box.className = 'p-3 bg-slate-900/80 border border-slate-800 rounded-xl space-y-1';
+                box.innerHTML = `
+                    <p class="text-xs font-semibold text-cyan-400">${ocr.fileName}:</p>
+                    <pre class="text-[11px] text-slate-400 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">${ocr.text || '(No text detected)'}</pre>
+                `;
+                elements.rawOcrContainer.appendChild(box);
+            });
+        }
+    </script>
+</body>
+
+</html>
